@@ -396,8 +396,6 @@ _ACTIVATION_REGISTRY = LazyDict({
     lambda: nn.Tanh(),
     "sigmoid":
     lambda: nn.Sigmoid(),
-    "swish":
-    lambda: nn.SiLU(),
 })
 
 
