@@ -461,6 +461,7 @@ class EmbeddingPoolerHead(PoolerHead):
     def __init__(self, projector: Optional[nn.Module] = None) -> None:
         super().__init__(activation=PoolerNormalize())
         self.projector = projector
+<<<<<<< Updated upstream
         self._projector_dim_checked = False
 
     def _sync_projector_to_ref(self, ref_tensor: torch.Tensor) -> None:
@@ -500,6 +501,8 @@ class EmbeddingPoolerHead(PoolerHead):
                     f"Dimension mismatch: Dense projector expects "
                     f"input dim {expected_dim}, but pooled output "
                     f"has dim {actual_dim}")
+=======
+>>>>>>> Stashed changes
 
     def forward(self, pooled_data: Union[list[torch.Tensor], torch.Tensor],
                 pooling_metadata: PoolingMetadata):

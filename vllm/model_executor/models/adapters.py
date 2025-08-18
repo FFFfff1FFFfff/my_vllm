@@ -11,6 +11,11 @@ from vllm.config import ModelConfig
 from vllm.logger import init_logger
 from vllm.model_executor.layers.activation import get_act_fn
 from vllm.model_executor.models.config import VerifyAndUpdateConfig
+<<<<<<< Updated upstream
+=======
+from vllm.transformers_utils.config import (get_hf_file_bytes,
+                                            get_hf_file_to_dict)
+>>>>>>> Stashed changes
 
 from .interfaces_base import VllmModelForPooling, is_pooling_model
 
@@ -61,6 +66,7 @@ def _load_weights_to_linear(state_dict: dict, linear: nn.Linear) -> bool:
 
 def _load_st_projector(model_config: "ModelConfig") -> Optional[nn.Module]:
     """Load Sentence-Transformers Dense projection layers."""
+<<<<<<< Updated upstream
     from vllm.transformers_utils.config import (get_hf_file_bytes,
                                                 get_hf_file_to_dict)
 
@@ -101,6 +107,93 @@ def _load_st_projector(model_config: "ModelConfig") -> Optional[nn.Module]:
         out_features = cfg.get("out_features")
         if in_features is None or out_features is None:
             continue
+=======
+
+    try:
+        modules = get_hf_file_to_dict("modules.json", model_config.model,
+                                      model_config.revision)
+        if not modules:
+            return None
+
+        if isinstance(modules, dict):
+            modules = modules.get("modules", [])
+
+        dense_modules = [
+            m for m in modules
+            if m.get("type") == "sentence_transformers.models.Dense"
+        ]
+        if not dense_modules:
+            return None
+
+        module = dense_modules[0]
+        folder = module.get("path", "")
+
+        config_path = f"{folder}/config.json" if folder else "config.json"
+        layer_config = get_hf_file_to_dict(config_path, model_config.model,
+                                           model_config.revision)
+        if not layer_config:
+            return None
+
+        linear = nn.Linear(layer_config.get("in_features", 768),
+                           layer_config.get("out_features", 768),
+                           bias=layer_config.get("bias", True),
+                           dtype=torch.float32)
+
+        if _load_dense_weights(linear, folder, model_config):
+            layers = [linear]
+            if act_name := layer_config.get("activation_function"):
+                layers.append(get_act_fn(act_name))
+            return nn.Sequential(*layers).to(dtype=torch.float32)
+
+    except Exception as e:
+        logger.debug("ST projector loading failed: %s", e)
+
+    return None
+
+
+def _load_dense_weights(linear: nn.Linear, folder: str,
+                        model_config: "ModelConfig") -> bool:
+    """Load weights using vLLM's weight_loader pattern."""
+    from vllm.model_executor.model_loader.weight_utils import (
+        default_weight_loader)
+
+    for filename in ["model.safetensors", "pytorch_model.bin"]:
+        file_path = f"{folder}/{filename}" if folder else filename
+
+        try:
+            file_bytes = get_hf_file_bytes(file_path, model_config.model,
+                                           model_config.revision)
+            if not file_bytes:
+                continue
+
+            if filename.endswith(".safetensors"):
+                from safetensors.torch import load as load_safetensors
+                state_dict = load_safetensors(file_bytes)
+            else:
+                import io
+                state_dict = torch.load(io.BytesIO(file_bytes),
+                                        map_location="cpu")
+
+            for weight_key in ["weight", "linear.weight", "dense.weight"]:
+                if weight_key in state_dict:
+                    weight_loader = getattr(linear.weight, "weight_loader",
+                                            default_weight_loader)
+                    weight_loader(linear.weight,
+                                  state_dict[weight_key].to(torch.float32))
+
+                    bias_key = weight_key.replace("weight", "bias")
+                    if linear.bias is not None and bias_key in state_dict:
+                        bias_loader = getattr(linear.bias, "weight_loader",
+                                              default_weight_loader)
+                        bias_loader(linear.bias,
+                                    state_dict[bias_key].to(torch.float32))
+                    return True
+        except Exception as e:
+            logger.debug("Failed to load %s: %s", filename, e)
+            continue
+
+    return False
+>>>>>>> Stashed changes
 
         use_bias = cfg.get("bias", True)
         # Create linear layer with float32 for numerical stability
@@ -116,6 +209,7 @@ def _load_st_projector(model_config: "ModelConfig") -> Optional[nn.Module]:
             if b is not None:
                 import io
 
+<<<<<<< Updated upstream
                 from safetensors.torch import load as st_load
                 sd = st_load(b)
                 weight_loaded = _load_weights_to_linear(sd, linear)
@@ -151,6 +245,15 @@ def _load_st_projector(model_config: "ModelConfig") -> Optional[nn.Module]:
     projector = nn.Sequential(*layers)
     projector = projector.to(dtype=torch.float32)
     return projector
+=======
+def _create_embedding_pooler_with_projector(pooler_config,
+                                            model_config: "ModelConfig"):
+    """Create embedding pooler with ST projector support."""
+    from vllm.model_executor.layers.pooler import Pooler
+
+    projector = _load_st_projector(model_config)
+    return Pooler.for_embed(pooler_config, projector=projector)
+>>>>>>> Stashed changes
 
 
 def _get_pooling_model_name(orig_model_name: str, pooling_suffix: str) -> str:
@@ -259,7 +362,12 @@ def as_embedding_model(cls: _T) -> _T:
                 "encode":
                 Pooler.for_encode(pooler_config),
                 "embed":
+<<<<<<< Updated upstream
                 Pooler.for_embed(pooler_config, projector=projector),
+=======
+                _create_embedding_pooler_with_projector(
+                    pooler_config, vllm_config.model_config),
+>>>>>>> Stashed changes
             })
 
     ModelForEmbedding.__name__ = \

@@ -8,6 +8,7 @@ from scipy.spatial.distance import cosine
 
 from ...utils import EmbedModelInfo
 from .mteb_utils import MTEB_EMBED_TOL, mteb_test_embed_models
+<<<<<<< Updated upstream
 
 
 def _get_vllm_embeddings(vllm_runner, model_info: EmbedModelInfo,
@@ -49,6 +50,8 @@ def _get_hf_embeddings(hf_runner, model_info: EmbedModelInfo,
             return embeddings.cpu().numpy()
         return np.array(embeddings)
 
+=======
+>>>>>>> Stashed changes
 
 # ST models with projector (Dense) layers
 ST_PROJECTOR_MODELS = [
@@ -63,17 +66,14 @@ ST_PROJECTOR_MODELS = [
 @pytest.mark.parametrize("model_info", ST_PROJECTOR_MODELS)
 def test_embed_models_mteb(hf_runner, vllm_runner,
                            model_info: EmbedModelInfo) -> None:
-    """MTEB test for ST projector models to detect numerical issues."""
     vllm_extra_kwargs: dict[str, Any] = {}
-    if model_info.architecture == "BertModel":
-        # Ensure BertEmbeddingModel is used for embedding models
-        vllm_extra_kwargs["trust_remote_code"] = True
 
     mteb_test_embed_models(hf_runner,
                            vllm_runner,
                            model_info,
                            vllm_extra_kwargs,
                            atol=MTEB_EMBED_TOL)
+<<<<<<< Updated upstream
 
 
 @pytest.mark.parametrize("model_info", ST_PROJECTOR_MODELS)
@@ -199,3 +199,5 @@ def test_embedding_quality_checks(vllm_runner,
                                 f"{i + 1} vs {j + 1} -> {sim:.6f}")
 
     print("✓ All embedding quality checks passed!")
+=======
+>>>>>>> Stashed changes
