@@ -559,7 +559,6 @@ class SimplePooler(Pooler):
         if pooler_config.task == "embed":
             head = EmbeddingPoolerHead(projector=projector)
         elif pooler_config.task == "encode":
-            # head = EmbeddingPoolerHead()  # no projector
             head = RewardPoolerHead()
         else:
             raise NotImplementedError(f"Unknown task: {pooler_config.task}")

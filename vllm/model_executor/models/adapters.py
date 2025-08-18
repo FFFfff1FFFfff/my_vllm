@@ -10,6 +10,7 @@ import torch.nn as nn
 from vllm.logger import init_logger
 from vllm.model_executor.layers.activation import get_act_fn
 from vllm.model_executor.models.config import VerifyAndUpdateConfig
+from vllm.transformers_utils.config import get_hf_file_to_dict, get_hf_file_bytes
 
 from .interfaces_base import VllmModelForPooling, is_pooling_model
 
@@ -30,7 +31,6 @@ _GENERATE_SUFFIXES = [
 
 def _load_st_projector(model_config: "ModelConfig") -> Optional[nn.Module]:
     """Load Sentence-Transformers Dense projection layers."""
-    from vllm.transformers_utils.config import get_hf_file_to_dict, get_hf_file_bytes
     
     try:
         modules = get_hf_file_to_dict("modules.json", model_config.model, model_config.revision)
@@ -73,7 +73,6 @@ def _load_st_projector(model_config: "ModelConfig") -> Optional[nn.Module]:
 
 def _load_dense_weights(linear: nn.Linear, folder: str, model_config: "ModelConfig") -> bool:
     """Load weights using vLLM's weight_loader pattern."""
-    from vllm.transformers_utils.config import get_hf_file_bytes
     from vllm.model_executor.model_loader.weight_utils import default_weight_loader
 
     for filename in ["model.safetensors", "pytorch_model.bin"]:
