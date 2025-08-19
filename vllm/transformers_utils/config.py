@@ -449,6 +449,23 @@ def get_config(
                     raise e
         config = _maybe_remap_hf_config_attrs(config)
 
+        # Phi4Flash misuses this config as list[int]. Convert it to int and add
+        # the layer_types list[str] to make it HF compatible
+        if (config.model_type == "phi4flash"):
+            # TODO: Remove after the following PR is merged:
+            # https://huggingface.co/microsoft/Phi-4-mini-flash-reasoning/discussions/6
+            if not hasattr(config, "layer_types"):
+                config.layer_types = [
+                    "sliding_attention" if i < config.num_hidden_layers // 2
+                    and i % 2 == 1 else "full_attention"
+                    for i in range(config.num_hidden_layers)
+                ]
+            # TODO: Remove after the following PR is merged:
+            # https://huggingface.co/microsoft/Phi-4-mini-flash-reasoning/discussions/7
+            if isinstance(config.sliding_window, list):
+                config.sliding_window = next(
+                    filter(None, config.sliding_window), None)
+
     elif config_format == ConfigFormat.MISTRAL:
         # This function loads a params.json config which
         # should be used when loading models in mistral format
@@ -908,3 +925,33 @@ def _maybe_retrieve_max_pos_from_hf(model, revision, **kwargs) -> int:
             exc_info=e)
 
     return max_position_embeddings
+
+
+def get_hf_file_bytes(file_name: str,
+                      model: Union[str, Path],
+                      revision: Optional[str] = 'main') -> Optional[bytes]:
+    """Get file contents from HuggingFace repository as bytes."""
+    file_path = try_get_local_file(model=model,
+                                   file_name=file_name,
+                                   revision=revision)
+
+    if file_path is None:
+        try:
+            hf_hub_file = hf_hub_download(model,
+                                          file_name,
+                                          revision=revision,
+                                          token=_get_hf_token())
+            file_path = Path(hf_hub_file)
+        except (OSError, ValueError) as e:
+            logger.debug("Failed to download %s from HF: %s", file_name, e)
+            return None
+
+    if file_path is not None and file_path.is_file():
+        try:
+            with open(file_path, 'rb') as file:
+                return file.read()
+        except OSError as e:
+            logger.debug("Failed to read file %s: %s", file_path, e)
+            return None
+
+    return None
