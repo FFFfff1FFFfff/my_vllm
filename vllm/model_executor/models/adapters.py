@@ -107,14 +107,6 @@ def _load_dense_weights(linear: nn.Linear, folder: str, model_config: "ModelConf
     return False
 
 
-def _create_embedding_pooler_with_projector(pooler_config, model_config: "ModelConfig"):
-    """Create embedding pooler with ST projector support."""
-    from vllm.model_executor.layers.pooler import Pooler
-    
-    projector = _load_st_projector(model_config)
-    return Pooler.for_embed(pooler_config, projector=projector)
-
-
 def _get_pooling_model_name(orig_model_name: str, pooling_suffix: str) -> str:
     model_name = orig_model_name
 
@@ -216,7 +208,7 @@ def as_embedding_model(cls: _T) -> _T:
 
             self.pooler = DispatchPooler({
                 "encode": Pooler.for_encode(pooler_config),
-                "embed": _create_embedding_pooler_with_projector(pooler_config, vllm_config.model_config),
+                "embed": Pooler.for_embed(pooler_config, projector=_load_st_projector(vllm_config.model_config)),
             })
 
     ModelForEmbedding.__name__ = \
